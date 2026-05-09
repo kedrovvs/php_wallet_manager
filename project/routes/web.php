@@ -1,24 +1,27 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\AuthController;
+use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\WalletController;
+use Illuminate\Support\Facades\Route;
 
-Route::middleware('guest')->group(function () {
-    Route::get('/login', [AuthController::class, 'showLogin'])->name('login');
-    Route::post('/login', [AuthController::class, 'login']);
-    Route::get('/register', [AuthController::class, 'showRegister'])->name('register');
-    Route::post('/register', [AuthController::class, 'register']);
+Route::get('/', function () {
+    return view('welcome');
 });
 
-Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
+Route::get('/dashboard', function () {
+    return view('dashboard');
+})->middleware(['auth', 'verified'])->name('dashboard');
 
 Route::middleware('auth')->group(function () {
-    Route::get('/', [WalletController::class, 'index'])->name('wallets.index');
-    Route::get('/wallets/create', [WalletController::class, 'create'])->name('wallets.create');
-    Route::post('/wallets', [WalletController::class, 'store'])->name('wallets.store');
-    Route::get('/wallets/{wallet}', [WalletController::class, 'show'])->name('wallets.show');
-    Route::post('/wallets/{wallet}/add-money', [WalletController::class, 'addMoney'])->name('wallets.add-money');
-    Route::post('/wallets/{wallet}/hold', [WalletController::class, 'holdMoney'])->name('wallets.hold');
-    Route::post('/holds/{hold}/cancel', [WalletController::class, 'cancelHold'])->name('holds.cancel');
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    Route::get('/wallet', [WalletController::class, 'index'])->name('wallet.index');
+    Route::post('/wallet/fund', [WalletController::class, 'fund'])->name('wallet.fund');
+    Route::post('/wallet/withdraw', [WalletController::class, 'withdraw'])->name('wallet.withdraw');
+    Route::post('/wallet/hold', [WalletController::class, 'hold'])->name('wallet.hold');
+    Route::post('/wallet/release-hold', [WalletController::class, 'releaseHold'])->name('wallet.release-hold');
 });
+
+require __DIR__.'/auth.php';
