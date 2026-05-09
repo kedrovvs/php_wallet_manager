@@ -5,13 +5,12 @@ namespace App\Http\Controllers;
 use App\Models\Hold;
 use App\Models\Wallet;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 
 class WalletController extends Controller
 {
     public function index()
     {
-        $wallets = Wallet::with('holds')->get();
+        $wallets = auth()->user()->wallets()->with('holds')->get();
         return view('wallets.index', compact('wallets'));
     }
 
@@ -26,7 +25,7 @@ class WalletController extends Controller
             'name' => 'required|string|max:255',
         ]);
 
-        Wallet::create([
+        auth()->user()->wallets()->create([
             'name' => $validated['name'],
             'balance' => 0,
         ]);
@@ -36,12 +35,20 @@ class WalletController extends Controller
 
     public function show(Wallet $wallet)
     {
+        if ($wallet->user_id !== auth()->id()) {
+            abort(403);
+        }
+
         $wallet->load('holds');
         return view('wallets.show', compact('wallet'));
     }
 
     public function addMoney(Request $request, Wallet $wallet)
     {
+        if ($wallet->user_id !== auth()->id()) {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'amount' => 'required|integer|min:1',
         ]);
@@ -53,6 +60,10 @@ class WalletController extends Controller
 
     public function holdMoney(Request $request, Wallet $wallet)
     {
+        if ($wallet->user_id !== auth()->id()) {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'amount' => 'required|integer|min:1',
             'description' => 'nullable|string|max:255',
@@ -73,6 +84,10 @@ class WalletController extends Controller
 
     public function cancelHold(Hold $hold)
     {
+        if ($hold->wallet->user_id !== auth()->id()) {
+            abort(403);
+        }
+
         if ($hold->status !== 'active') {
             return back()->withErrors(['hold' => 'Hold is not active.']);
         }

@@ -10,7 +10,19 @@
     <nav class="bg-white shadow-sm border-b">
         <div class="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
             <a href="{{ route('wallets.index') }}" class="text-lg font-bold">Ledger Wallet</a>
-            <a href="{{ route('wallets.create') }}" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">+ New Wallet</a>
+            <div class="flex items-center gap-4">
+                @auth
+                    <span class="text-sm text-gray-500">{{ auth()->user()->name }}</span>
+                    <a href="{{ route('wallets.create') }}" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">+ New Wallet</a>
+                    <form action="{{ route('logout') }}" method="POST" class="inline">
+                        @csrf
+                        <button type="submit" class="text-sm text-gray-600 hover:text-gray-900 underline">Log Out</button>
+                    </form>
+                @else
+                    <a href="{{ route('login') }}" class="text-sm text-gray-600 hover:text-gray-900 underline">Log In</a>
+                    <a href="{{ route('register') }}" class="bg-blue-600 text-white px-4 py-2 rounded text-sm hover:bg-blue-700">Register</a>
+                @endauth
+            </div>
         </div>
     </nav>
     <main class="max-w-4xl mx-auto px-4 py-6">
