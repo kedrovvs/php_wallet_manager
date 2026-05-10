@@ -4,6 +4,7 @@
 .gitattributes
 node_modules
 vendor
+public/build
 storage/framework/cache
 storage/framework/sessions
 storage/framework/views

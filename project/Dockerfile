@@ -1,15 +1,16 @@
-FROM php:8.3-cli AS base
+FROM php:8.3-cli-alpine AS base
 
-RUN apt-get update && apt-get install -y \
-    libgmp-dev \
-    unzip \
-    curl \
+RUN apk add --no-cache \
+        gmp-dev \
+        postgresql-dev \
+        unzip \
+        curl \
+        oniguruma-dev \
     && docker-php-ext-install -j$(nproc) \
         bcmath \
         gmp \
-        pdo_sqlite \
-        mbstring \
-    && rm -rf /var/lib/apt/lists/*
+        pdo_pgsql \
+        mbstring
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
@@ -20,17 +21,17 @@ RUN npm ci
 COPY vite.config.js tailwind.config.js postcss.config.js ./
 COPY resources/css resources/css
 COPY resources/js resources/js
+COPY resources/views resources/views
 RUN npm run build
 
 FROM base AS final
 WORKDIR /app
 
 COPY --from=node-build /app/public/build public/build
-COPY composer.json composer.lock ./
 COPY --from=base /usr/bin/composer /usr/bin/composer
-RUN composer install --no-interaction --optimize-autoloader --no-dev \
+COPY composer.json composer.lock ./
+RUN composer install --no-interaction --optimize-autoloader --no-dev --no-scripts \
     && rm -rf /root/.composer
-
 COPY . .
 
 COPY docker-entrypoint.sh /usr/local/bin/
