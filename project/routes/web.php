@@ -22,6 +22,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/wallet/withdraw', [WalletController::class, 'withdraw'])->name('wallet.withdraw');
     Route::post('/wallet/hold', [WalletController::class, 'hold'])->name('wallet.hold');
     Route::post('/wallet/release-hold', [WalletController::class, 'releaseHold'])->name('wallet.release-hold');
+    Route::post('/wallet/export-key', [WalletController::class, 'exportPrivateKey'])->name('wallet.export-key');
 });
 
 require __DIR__.'/auth.php';

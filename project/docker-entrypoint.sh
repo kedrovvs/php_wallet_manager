@@ -8,6 +8,7 @@ fi
 
 mkdir -p storage/framework/views storage/framework/cache storage/framework/sessions storage/logs bootstrap/cache
 
+composer dump-autoload --no-dev
 php artisan package:discover --ansi
 php artisan migrate --force
 

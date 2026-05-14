@@ -4,18 +4,22 @@ namespace App\Http\Controllers;
 
 use App\Models\Transaction;
 use App\Services\BlockchainService;
+use App\Services\WalletService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Crypt;
 use Illuminate\View\View;
 
 class WalletController extends Controller
 {
     private BlockchainService $blockchain;
+    private WalletService $walletService;
 
-    public function __construct(BlockchainService $blockchain)
+    public function __construct(BlockchainService $blockchain, WalletService $walletService)
     {
         $this->blockchain = $blockchain;
+        $this->walletService = $walletService;
     }
 
     public function index(): View
@@ -30,12 +34,13 @@ class WalletController extends Controller
         $hold = '0';
         $available = '0';
         $configured = $this->blockchain->isConfigured();
+        $walletAddress = $user->eth_address;
 
-        if ($configured) {
+        if ($configured && $walletAddress) {
             try {
-                $balance = $this->blockchain->getBalance($user->id);
-                $hold = $this->blockchain->getHold($user->id);
-                $available = $this->blockchain->getAvailableBalance($user->id);
+                $balance = $this->blockchain->getBalance($walletAddress);
+                $hold = $this->blockchain->getHold($walletAddress);
+                $available = $this->blockchain->getAvailableBalance($walletAddress);
             } catch (\Exception $e) {
                 $balance = '0';
                 $hold = '0';
@@ -44,7 +49,7 @@ class WalletController extends Controller
         }
 
         return view('wallet.index', compact(
-            'user', 'transactions', 'balance', 'hold', 'available', 'configured'
+            'user', 'transactions', 'balance', 'hold', 'available', 'configured', 'walletAddress'
         ));
     }
 
@@ -57,8 +62,13 @@ class WalletController extends Controller
         $user = Auth::user();
         $amount = (float) $request->input('amount');
 
+        if (!$user->eth_address) {
+            return redirect()->route('wallet.index')
+                ->with('error', 'No wallet configured for your account.');
+        }
+
         try {
-            $txHash = $this->blockchain->fundUser($user->id, $amount);
+            $txHash = $this->blockchain->fundUser($user->eth_address, $amount);
 
             Transaction::create([
                 'user_id' => $user->id,
@@ -87,8 +97,15 @@ class WalletController extends Controller
         $amount = (float) $request->input('amount');
         $toAddress = $request->input('to_address');
 
+        if (!$user->eth_address || !$user->encrypted_private_key) {
+            return redirect()->route('wallet.index')
+                ->with('error', 'No wallet configured for your account.');
+        }
+
         try {
-            $txHash = $this->blockchain->withdrawUser($user->id, $amount, $toAddress);
+            $privateKey = $this->walletService->getDecryptedPrivateKey($user);
+
+            $txHash = $this->blockchain->withdrawAsUser($amount, $toAddress, $privateKey);
 
             Transaction::create([
                 'user_id' => $user->id,
@@ -116,8 +133,13 @@ class WalletController extends Controller
         $user = Auth::user();
         $amount = (float) $request->input('amount');
 
+        if (!$user->eth_address) {
+            return redirect()->route('wallet.index')
+                ->with('error', 'No wallet configured for your account.');
+        }
+
         try {
-            $txHash = $this->blockchain->holdUser($user->id, $amount);
+            $txHash = $this->blockchain->holdUser($user->eth_address, $amount);
 
             Transaction::create([
                 'user_id' => $user->id,
@@ -144,8 +166,13 @@ class WalletController extends Controller
         $user = Auth::user();
         $amount = (float) $request->input('amount');
 
+        if (!$user->eth_address) {
+            return redirect()->route('wallet.index')
+                ->with('error', 'No wallet configured for your account.');
+        }
+
         try {
-            $txHash = $this->blockchain->releaseHold($user->id, $amount);
+            $txHash = $this->blockchain->releaseHold($user->eth_address, $amount);
 
             Transaction::create([
                 'user_id' => $user->id,
@@ -161,5 +188,24 @@ class WalletController extends Controller
             return redirect()->route('wallet.index')
                 ->with('error', 'Release failed: ' . $e->getMessage());
         }
+    }
+
+    public function exportPrivateKey(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'password' => 'required|current_password',
+        ]);
+
+        $user = Auth::user();
+
+        if (!$user->encrypted_private_key) {
+            return redirect()->route('wallet.index')
+                ->with('error', 'No private key stored.');
+        }
+
+        $privateKey = $this->walletService->getDecryptedPrivateKey($user);
+
+        return redirect()->route('wallet.index')
+            ->with('private_key', $privateKey);
     }
 }

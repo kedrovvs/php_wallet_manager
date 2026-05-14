@@ -4,13 +4,13 @@ pragma solidity ^0.8.19;
 contract WalletLedger {
     address public owner;
 
-    mapping(uint256 => uint256) private balances;
-    mapping(uint256 => uint256) private holds;
+    mapping(address => uint256) private balances;
+    mapping(address => uint256) private holds;
 
-    event Funded(uint256 indexed userId, uint256 amount);
-    event Withdrawn(uint256 indexed userId, uint256 amount, address to);
-    event Held(uint256 indexed userId, uint256 amount);
-    event HoldReleased(uint256 indexed userId, uint256 amount);
+    event Funded(address indexed user, uint256 amount);
+    event Withdrawn(address indexed user, uint256 amount, address to);
+    event Held(address indexed user, uint256 amount);
+    event HoldReleased(address indexed user, uint256 amount);
 
     modifier onlyOwner() {
         require(msg.sender == owner, "Not owner");
@@ -21,40 +21,48 @@ contract WalletLedger {
         owner = msg.sender;
     }
 
-    function fundUser(uint256 userId) external payable onlyOwner {
-        balances[userId] += msg.value;
-        emit Funded(userId, msg.value);
+    function fundUser(address user) external payable onlyOwner {
+        balances[user] += msg.value;
+        emit Funded(user, msg.value);
     }
 
-    function withdrawUser(uint256 userId, uint256 amount, address payable to) external onlyOwner {
-        require(balances[userId] >= amount, "Insufficient balance");
-        require(balances[userId] - holds[userId] >= amount, "Funds held");
-        balances[userId] -= amount;
+    function withdrawUser(address user, uint256 amount, address payable to) external onlyOwner {
+        require(balances[user] >= amount, "Insufficient balance");
+        require(balances[user] - holds[user] >= amount, "Funds held");
+        balances[user] -= amount;
         to.transfer(amount);
-        emit Withdrawn(userId, amount, to);
+        emit Withdrawn(user, amount, to);
     }
 
-    function holdUser(uint256 userId, uint256 amount) external onlyOwner {
-        require(balances[userId] - holds[userId] >= amount, "Insufficient available");
-        holds[userId] += amount;
-        emit Held(userId, amount);
+    function withdraw(uint256 amount, address payable to) external {
+        require(balances[msg.sender] >= amount, "Insufficient balance");
+        require(balances[msg.sender] - holds[msg.sender] >= amount, "Funds held");
+        balances[msg.sender] -= amount;
+        to.transfer(amount);
+        emit Withdrawn(msg.sender, amount, to);
     }
 
-    function releaseHold(uint256 userId, uint256 amount) external onlyOwner {
-        require(holds[userId] >= amount, "No hold to release");
-        holds[userId] -= amount;
-        emit HoldReleased(userId, amount);
+    function holdUser(address user, uint256 amount) external onlyOwner {
+        require(balances[user] - holds[user] >= amount, "Insufficient available");
+        holds[user] += amount;
+        emit Held(user, amount);
     }
 
-    function getBalance(uint256 userId) external view returns (uint256) {
-        return balances[userId];
+    function releaseHold(address user, uint256 amount) external onlyOwner {
+        require(holds[user] >= amount, "No hold to release");
+        holds[user] -= amount;
+        emit HoldReleased(user, amount);
     }
 
-    function getHold(uint256 userId) external view returns (uint256) {
-        return holds[userId];
+    function getBalance(address user) external view returns (uint256) {
+        return balances[user];
     }
 
-    function getAvailableBalance(uint256 userId) external view returns (uint256) {
-        return balances[userId] - holds[userId];
+    function getHold(address user) external view returns (uint256) {
+        return holds[user];
+    }
+
+    function getAvailableBalance(address user) external view returns (uint256) {
+        return balances[user] - holds[user];
     }
 }

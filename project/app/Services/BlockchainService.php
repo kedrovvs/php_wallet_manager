@@ -16,13 +16,14 @@ class BlockchainService
     private string $masterPrivateKey;
 
     private const FUNCTION_SELECTORS = [
-        'fundUser'           => '39d3e0f9',
-        'withdrawUser'       => '5fd8c7c0',
-        'holdUser'           => '068fbbc2',
-        'releaseHold'        => '99f088c4',
-        'getBalance'         => 'f8b2cb4f',
-        'getHold'            => 'bcb6a4d7',
-        'getAvailableBalance' => '86e05782',
+        'fundUser'            => '26c40c68',
+        'withdrawUser'        => 'b3362ce4',
+        'withdraw'            => '00f714ce',
+        'holdUser'            => 'dafcfbd5',
+        'releaseHold'         => 'dc6b41d8',
+        'getBalance'          => 'f8b2cb4f',
+        'getHold'             => '8a2dafe9',
+        'getAvailableBalance' => '6c24a76f',
     ];
 
     public function __construct()
@@ -35,54 +36,63 @@ class BlockchainService
         $this->http = new Client();
     }
 
-    public function getBalance(int $userId): string
+    public function getBalance(string $address): string
     {
-        return $this->callRead(self::FUNCTION_SELECTORS['getBalance'], $this->encodeUint256($userId));
+        return $this->callRead(self::FUNCTION_SELECTORS['getBalance'], $this->encodeAddress($address));
     }
 
-    public function getHold(int $userId): string
+    public function getHold(string $address): string
     {
-        return $this->callRead(self::FUNCTION_SELECTORS['getHold'], $this->encodeUint256($userId));
+        return $this->callRead(self::FUNCTION_SELECTORS['getHold'], $this->encodeAddress($address));
     }
 
-    public function getAvailableBalance(int $userId): string
+    public function getAvailableBalance(string $address): string
     {
-        return $this->callRead(self::FUNCTION_SELECTORS['getAvailableBalance'], $this->encodeUint256($userId));
+        return $this->callRead(self::FUNCTION_SELECTORS['getAvailableBalance'], $this->encodeAddress($address));
     }
 
-    public function fundUser(int $userId, float $amountInEth): string
+    public function fundUser(string $userAddress, float $amountInEth): string
     {
         $valueWei = $this->ethToWei($amountInEth);
-        $data = '0x' . self::FUNCTION_SELECTORS['fundUser'] . $this->encodeUint256($userId);
-        return $this->sendTransaction($data, $valueWei);
+        $data = '0x' . self::FUNCTION_SELECTORS['fundUser'] . $this->encodeAddress($userAddress);
+        return $this->sendTransaction($data, $valueWei, $this->masterPrivateKey);
     }
 
-    public function withdrawUser(int $userId, float $amountInEth, string $toAddress): string
+    public function withdrawUser(string $userAddress, float $amountInEth, string $toAddress): string
     {
         $amountWei = $this->ethToWei($amountInEth);
         $data = '0x' . self::FUNCTION_SELECTORS['withdrawUser']
-            . $this->encodeUint256($userId)
+            . $this->encodeAddress($userAddress)
             . $this->encodeUint256($amountWei)
             . $this->encodeAddress($toAddress);
-        return $this->sendTransaction($data, '0x0');
+        return $this->sendTransaction($data, '0x0', $this->masterPrivateKey);
     }
 
-    public function holdUser(int $userId, float $amountInEth): string
+    public function withdrawAsUser(float $amountInEth, string $toAddress, string $userPrivateKey): string
+    {
+        $amountWei = $this->ethToWei($amountInEth);
+        $data = '0x' . self::FUNCTION_SELECTORS['withdraw']
+            . $this->encodeUint256($amountWei)
+            . $this->encodeAddress($toAddress);
+        return $this->sendTransaction($data, '0x0', $userPrivateKey);
+    }
+
+    public function holdUser(string $userAddress, float $amountInEth): string
     {
         $amountWei = $this->ethToWei($amountInEth);
         $data = '0x' . self::FUNCTION_SELECTORS['holdUser']
-            . $this->encodeUint256($userId)
+            . $this->encodeAddress($userAddress)
             . $this->encodeUint256($amountWei);
-        return $this->sendTransaction($data, '0x0');
+        return $this->sendTransaction($data, '0x0', $this->masterPrivateKey);
     }
 
-    public function releaseHold(int $userId, float $amountInEth): string
+    public function releaseHold(string $userAddress, float $amountInEth): string
     {
         $amountWei = $this->ethToWei($amountInEth);
         $data = '0x' . self::FUNCTION_SELECTORS['releaseHold']
-            . $this->encodeUint256($userId)
+            . $this->encodeAddress($userAddress)
             . $this->encodeUint256($amountWei);
-        return $this->sendTransaction($data, '0x0');
+        return $this->sendTransaction($data, '0x0', $this->masterPrivateKey);
     }
 
     private function callRead(string $selector, string $encodedParams): string
@@ -102,9 +112,10 @@ class BlockchainService
         return $this->decodeUint256($result);
     }
 
-    private function sendTransaction(string $data, string $valueHex): string
+    private function sendTransaction(string $data, string $valueHex, string $privateKey): string
     {
-        $nonce = $this->getTransactionCount($this->masterAddress);
+        $fromAddress = $this->addressFromPrivateKey($privateKey);
+        $nonce = $this->getTransactionCount($fromAddress);
         $gasPrice = $this->getGasPrice();
         $gas = '0x' . dechex(200000);
         $rawChainId = $this->getChainId();
@@ -121,7 +132,7 @@ class BlockchainService
         ];
 
         $transaction = new EthereumTransaction($txData);
-        $signed = $transaction->sign($this->masterPrivateKey);
+        $signed = $transaction->sign($privateKey);
         $signedHex = '0x' . $signed;
 
         return $this->sendRawTransaction($signedHex);
@@ -211,6 +222,13 @@ class BlockchainService
     {
         $wei = (int) ($eth * 1e18);
         return '0x' . str_pad(gmp_strval(gmp_init($wei, 10), 16), 64, '0', STR_PAD_LEFT);
+    }
+
+    private function addressFromPrivateKey(string $privateKey): string
+    {
+        $util = new \Web3p\EthereumUtil\Util();
+        $publicKey = $util->privateKeyToPublicKey($privateKey);
+        return $util->publicKeyToAddress($publicKey);
     }
 
     public function isConfigured(): bool

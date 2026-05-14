@@ -18,9 +18,36 @@
                 </div>
             @endif
 
+            @if (session('private_key'))
+                <div class="mb-6 px-4 py-3 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg text-sm break-all">
+                    <strong class="block mb-1">Your Private Key (keep secret!):</strong>
+                    <code class="text-xs">{{ session('private_key') }}</code>
+                </div>
+            @endif
+
             @if (!$configured)
                 <div class="mb-6 px-4 py-3 bg-amber-50 border border-amber-200 text-amber-700 rounded-lg text-sm">
                     Sepolia not configured. Set SEPOLIA_RPC_URL, SEPOLIA_CONTRACT_ADDRESS, SEPOLIA_MASTER_ADDRESS, and SEPOLIA_MASTER_PRIVATE_KEY in .env
+                </div>
+            @endif
+
+            @if ($walletAddress)
+                <div class="card p-4 mb-6 flex items-center gap-3">
+                    <svg class="w-5 h-5 text-slate-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M9 10a1 1 0 011-1h4a1 1 0 011 1v4a1 1 0 01-1 1h-4a1 1 0 01-1-1v-4z"/>
+                    </svg>
+                    <div class="min-w-0">
+                        <p class="text-xs text-slate-500 font-medium">Your Wallet Address</p>
+                        <p class="text-sm font-mono text-slate-900 truncate">{{ $walletAddress }}</p>
+                    </div>
+                </div>
+            @else
+                <div class="card p-4 mb-6 flex items-center gap-3 bg-amber-50 border-amber-200">
+                    <svg class="w-5 h-5 text-amber-500 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"/>
+                    </svg>
+                    <p class="text-sm text-amber-700">No blockchain wallet assigned yet. Contact an administrator.</p>
                 </div>
             @endif
 
@@ -137,6 +164,28 @@
                         <button type="submit" class="w-full inline-flex items-center justify-center px-5 py-2.5 bg-blue-500 text-white font-medium text-sm rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-colors">
                             Release Hold
                         </button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="card mb-6">
+                <div class="px-6 py-5 border-b border-slate-100">
+                    <h3 class="text-base font-semibold text-slate-900">Export Private Key</h3>
+                </div>
+                <div class="p-6 text-sm text-slate-600">
+                    <p class="mb-3">Enter your password to reveal your private key. You can use it to import your wallet into MetaMask or any Ethereum wallet.</p>
+                    <form method="POST" action="{{ route('wallet.export-key') }}">
+                        @csrf
+                        <div class="flex items-end gap-3 max-w-md">
+                            <div class="flex-1">
+                                <label for="export_password" class="label">Confirm Password</label>
+                                <input type="password" name="password" id="export_password"
+                                    class="input-field" required>
+                            </div>
+                            <button type="submit" class="btn-primary whitespace-nowrap">
+                                Reveal Key
+                            </button>
+                        </div>
                     </form>
                 </div>
             </div>
