@@ -18,7 +18,8 @@ FROM node:22-bookworm-slim AS node-build
 WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
-COPY vite.config.js tailwind.config.js postcss.config.js ./
+#tailwind.config.js postcss.config.js
+COPY vite.config.js ./
 COPY resources/css resources/css
 COPY resources/js resources/js
 COPY resources/views resources/views

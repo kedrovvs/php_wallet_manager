@@ -1,0 +1,59 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: laravel_app
+    ports:
+      - "8000:9000"
+    volumes:
+      - .:/var/www/html
+    networks:
+      - wallet-net
+    depends_on:
+      - postgres_ops
+      - ledger
+
+  postgres_ops:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: wallet_app
+      POSTGRES_USER: user
+      POSTGRES_PASSWORD: secret
+    volumes:
+      - ops_data:/var/lib/postgresql/data
+    networks:
+      - wallet-net
+
+  ledger:
+    image: ghcr.io/formancehq/ledger:latest
+    container_name: formance_ledger
+    environment:
+      - POSTGRES_URI=postgres://ledger_user:ledger_secret@ledger_db:5432/ledger_db?sslmode=disable
+      - BIND=:8080
+    ports:
+      - "3068:8080"
+    depends_on:
+      - ledger_db
+    networks:
+      - wallet-net
+
+  ledger_db:
+    image: postgres:15
+    environment:
+      POSTGRES_DB: ledger_db
+      POSTGRES_USER: ledger_user
+      POSTGRES_PASSWORD: ledger_secret
+    volumes:
+      - ledger_data:/var/lib/postgresql/data
+    networks:
+      - wallet-net
+
+volumes:
+  ops_data:
+  ledger_data:
+
+networks:
+  wallet-net:

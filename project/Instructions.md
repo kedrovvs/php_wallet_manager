@@ -1,6 +1,4 @@
-This is a great stack choice. Using **Formance Ledger** as a microservice separates your core accounting logic (the "source of truth") from your application logic (Laravel), ensuring auditability and correctness for financial transactions.
-
-Below is the comprehensive Architecture Plan and Development Guide.
+This is the comprehensive Architecture Plan and Development Guide.
 
 ---
 
